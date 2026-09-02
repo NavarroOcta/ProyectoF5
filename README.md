@@ -18,7 +18,7 @@ Plataforma web para la reserva y gestión de canchas de fútbol con flujo públi
 
 1. Clonar el repositorio:
    ```bash
-   git clone https://github.com/TU_USUARIO/f5-soccer-booking.git
+   git clone https://github.com/NavarroOcta/ProyectoF5.git
    ```
 2. Instalar dependencias:
    ```bash

@@ -1,0 +1,27 @@
+{
+  "version": "6",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1783452244572,
+      "tag": "0000_slow_tusk",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1783466132453,
+      "tag": "0001_easy_mandroid",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783467554186,
+      "tag": "0002_wakeful_winter_soldier",
+      "breakpoints": true
+    }
+  ]
+}

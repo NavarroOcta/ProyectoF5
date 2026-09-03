@@ -2,9 +2,8 @@ import { pgTable, text, timestamp, uuid, integer, unique, boolean } from 'drizzl
 import { relations } from 'drizzle-orm';
 
 export const users = pgTable('users', {
-  id: text('id').primaryKey(), // ID proveniente de Auth0 o Clerk (sub) o autogenerado
+  id: uuid('id').primaryKey(), // ID proveniente de Supabase auth.users
   email: text('email').notNull().unique(),
-  password: text('password').notNull(),
   name: text('name').notNull(),
   phone: text('phone').notNull(),
   role: text('role').notNull().default('user'), // 'user' | 'admin'
@@ -22,7 +21,7 @@ export const pitches = pgTable('pitches', {
 
 export const reservations = pgTable('reservations', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   pitchId: uuid('pitch_id').notNull().references(() => pitches.id, { onDelete: 'cascade' }),
   startTime: timestamp('start_time', { withTimezone: true, mode: 'date' }).notNull(),
   endTime: timestamp('end_time', { withTimezone: true, mode: 'date' }).notNull(),

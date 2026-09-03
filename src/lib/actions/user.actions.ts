@@ -4,14 +4,25 @@ import { db } from '../db';
 import { reservations, pitches } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { cookies } from 'next/headers';
-import { verifyJwt } from '../auth/jwt';
 import { revalidatePath } from 'next/cache';
+import { createServerClient } from '@supabase/ssr';
 
 export async function getUserReservations() {
-  const token = cookies().get('session_token')?.value;
-  if (!token) return [];
-  const decoded = await verifyJwt(token);
-  if (!decoded || !decoded.id) return [];
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() {}
+      }
+    }
+  );
+  
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user || !user.id) return [];
 
   try {
     const data = await db.select({
@@ -25,7 +36,7 @@ export async function getUserReservations() {
     })
     .from(reservations)
     .innerJoin(pitches, eq(reservations.pitchId, pitches.id))
-    .where(eq(reservations.userId, decoded.id))
+    .where(eq(reservations.userId, user.id))
     .orderBy(desc(reservations.startTime));
 
     return data;
@@ -36,15 +47,26 @@ export async function getUserReservations() {
 }
 
 export async function cancelReservation(reservationId: string) {
-  const token = cookies().get('session_token')?.value;
-  if (!token) return { success: false, message: 'No autenticado' };
-  const decoded = await verifyJwt(token);
-  if (!decoded || !decoded.id) return { success: false, message: 'No autenticado' };
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() {}
+      }
+    }
+  );
+  
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user || !user.id) return { success: false, message: 'No autenticado' };
 
   try {
     const [existing] = await db.select().from(reservations).where(eq(reservations.id, reservationId)).limit(1);
     if (!existing) return { success: false, message: 'Reserva no encontrada' };
-    if (existing.userId !== decoded.id) return { success: false, message: 'Acceso denegado' };
+    if (existing.userId !== user.id) return { success: false, message: 'Acceso denegado' };
     if (existing.status !== 'confirmed') return { success: false, message: 'Estado inválido para cancelación' };
 
     await db.update(reservations)

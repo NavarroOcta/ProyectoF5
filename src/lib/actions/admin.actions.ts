@@ -3,10 +3,33 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { db } from '../db';
-import { pitches, reservations } from '../db/schema';
+import { pitches, reservations, users } from '../db/schema';
 import { CreatePitchDTOSchema } from '../../types';
-import { verifyJwt } from '../auth/jwt';
 import { eq } from 'drizzle-orm';
+import { createServerClient } from '@supabase/ssr';
+
+// Middleware RBAC helper
+async function checkAdminAuth() {
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() { /* El middleware ya refresca las cookies */ }
+      }
+    }
+  );
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) throw new Error('UNAUTHORIZED');
+  // Verificación de rol en la tabla pública
+  const userRecord = await db.query.users.findFirst({
+    where: eq(users.id, user.id)
+  });
+  
+  if (!userRecord || userRecord.role !== 'admin') throw new Error('FORBIDDEN');
+}
 
 /**
  * Server Action para dar de alta una nueva cancha (Backoffice).
@@ -15,23 +38,15 @@ import { eq } from 'drizzle-orm';
  * @param payload Datos de la cancha a crear (nombre, tipo y estado)
  */
 export async function createPitch(payload: unknown) {
-  // 1. Extraer cookie de sesión
-  const sessionToken = cookies().get('session_token')?.value;
-  if (!sessionToken) {
+  try {
+    await checkAdminAuth();
+  } catch (error: any) {
     return {
       success: false as const,
-      error: 'UNAUTHORIZED' as const,
-      message: 'No se encontró una sesión activa.',
-    };
-  }
-
-  // 2. Verificar autenticación y autorización (RBAC)
-  const decodedToken = await verifyJwt(sessionToken);
-  if (!decodedToken || decodedToken.role !== 'admin') {
-    return {
-      success: false as const,
-      error: 'FORBIDDEN' as const,
-      message: 'No tienes los permisos administrativos necesarios para realizar esta acción.',
+      error: error.message as 'UNAUTHORIZED' | 'FORBIDDEN',
+      message: error.message === 'FORBIDDEN' 
+        ? 'No tienes los permisos administrativos necesarios para realizar esta acción.'
+        : 'No se encontró una sesión activa.',
     };
   }
 
@@ -79,23 +94,15 @@ export async function createPitch(payload: unknown) {
  * @param isPaid Nuevo estado de pago
  */
 export async function toggleReservationPayment(reservationId: string, isPaid: boolean) {
-  // 1. Extraer cookie de sesión
-  const sessionToken = cookies().get('session_token')?.value;
-  if (!sessionToken) {
+  try {
+    await checkAdminAuth();
+  } catch (error: any) {
     return {
       success: false as const,
-      error: 'UNAUTHORIZED' as const,
-      message: 'No se encontró una sesión activa.',
-    };
-  }
-
-  // 2. Verificar autenticación y autorización (RBAC)
-  const decodedToken = await verifyJwt(sessionToken);
-  if (!decodedToken || decodedToken.role !== 'admin') {
-    return {
-      success: false as const,
-      error: 'FORBIDDEN' as const,
-      message: 'No tienes los permisos administrativos necesarios para realizar esta acción.',
+      error: error.message as 'UNAUTHORIZED' | 'FORBIDDEN',
+      message: error.message === 'FORBIDDEN' 
+        ? 'No tienes los permisos administrativos necesarios para realizar esta acción.'
+        : 'No se encontró una sesión activa.',
     };
   }
 

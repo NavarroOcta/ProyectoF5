@@ -7,13 +7,11 @@ async function main() {
   const { db } = await import('./index');
   const { users, pitches, reservations, pitchSchedules } = await import('./schema');
   const { eq, like } = await import('drizzle-orm');
-  const bcrypt = await import('bcryptjs');
 
   const email = process.env.ADMIN_EMAIL;
-  const password = process.env.ADMIN_PASSWORD;
 
-  if (!email || !password) {
-    console.error('Error: Las variables de entorno ADMIN_EMAIL y ADMIN_PASSWORD deben estar definidas en el archivo .env.');
+  if (!email) {
+    console.error('Error: Las variables de entorno ADMIN_EMAIL debe estar definida en el archivo .env.');
     process.exit(1);
   }
 
@@ -23,15 +21,13 @@ async function main() {
     // ==========================================
     // 1. Inicialización/Seeding del Usuario Admin
     // ==========================================
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
     const existingAdmin = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
     let adminId = '';
     if (existingAdmin.length > 0) {
       adminId = existingAdmin[0].id;
       await db.update(users)
-        .set({ password: hashedPassword, name: 'Administrador F5', phone: '0000000000', role: 'admin' })
+        .set({ name: 'Administrador F5', phone: '0000000000', role: 'admin' })
         .where(eq(users.email, email));
       console.log('✔ Usuario administrador actualizado.');
     } else {
@@ -39,7 +35,6 @@ async function main() {
       await db.insert(users).values({
         id: adminId,
         email,
-        password: hashedPassword,
         name: 'Administrador F5',
         phone: '0000000000',
         role: 'admin',
@@ -51,7 +46,7 @@ async function main() {
     // 2. Seeding Idempotente de Canchas (Pitches)
     // ==========================================
     const currentPitches = await db.select().from(pitches);
-    let pitchIds: string[] = currentPitches.map(p => p.id);
+    let pitchIds: string[] = currentPitches.map((p: any) => p.id);
 
     if (currentPitches.length < 5) {
       console.log('Generando canchas fijas...');
@@ -91,18 +86,16 @@ async function main() {
     // 3. Seeding Idempotente de Clientes (Users)
     // ==========================================
     const mockUsersInDb = await db.select().from(users).where(like(users.email, '%@mock.com'));
-    let userIds: string[] = mockUsersInDb.map(u => u.id);
+    let userIds: string[] = mockUsersInDb.map((u: any) => u.id);
 
     if (userIds.length === 0) {
       console.log('Generando 15 clientes ficticios...');
-      const genericPasswordHash = await bcrypt.hash('password123', 10);
       const mockUsers = [];
 
       for (let i = 1; i <= 15; i++) {
         mockUsers.push({
           id: `user_mock_${Math.random().toString(36).substring(2, 11)}`,
           email: `client${i}@mock.com`,
-          password: genericPasswordHash,
           name: `Cliente Mock ${i}`,
           phone: `+54911${Math.floor(10000000 + Math.random() * 90000000)}`,
           role: 'user' as const,

@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { LoginDTO, LoginDTOSchema } from '@/types';
-import { login } from '@/lib/actions/auth.actions';
+import { createClient } from '@/lib/supabase/client';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -22,18 +22,17 @@ export default function LoginForm() {
   const onSubmit = async (data: LoginDTO) => {
     setServerError(null);
     try {
-      const response = await login(data);
-      if (response.success && 'role' in response) {
-        router.refresh();
-        if (response.role === 'admin') {
-          router.push('/admin');
-        } else {
-          if (window.location.pathname === '/login') {
-            router.push('/');
-          }
-        }
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (error) {
+        setServerError(error.message || 'Error al iniciar sesión.');
       } else {
-        setServerError(response.message || 'Error al iniciar sesión.');
+        router.refresh();
+        router.push('/admin');
       }
     } catch (error) {
       setServerError('Ocurrió un error inesperado de red.');

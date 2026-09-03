@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { RegisterUserDTO, RegisterUserDTOSchema } from '@/types';
-import { registerUser } from '@/lib/actions/public.actions';
+import { createClient } from '@/lib/supabase/client';
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -24,15 +24,25 @@ export default function RegisterForm() {
     setServerError(null);
     setSuccessMsg(null);
     try {
-      const response = await registerUser(data);
-      if (response.success) {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            phone: data.phone,
+          }
+        }
+      });
+
+      if (error) {
+        setServerError(error.message || 'Error al registrar.');
+      } else {
         setSuccessMsg('Registro exitoso. Serás redirigido...');
-        // Flujo Post-Registro: router.push('/login') y mensaje (acá usamos state para el banner)
         setTimeout(() => {
           router.push('/login');
         }, 2000);
-      } else {
-        setServerError(response.message || 'Error al registrar.');
       }
     } catch (error) {
       setServerError('Ocurrió un error inesperado de red.');

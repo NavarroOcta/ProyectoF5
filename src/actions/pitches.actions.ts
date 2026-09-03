@@ -2,16 +2,34 @@
 
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
-import { verifyJwt } from '@/lib/auth/jwt';
 import { CreatePitchDTOSchema } from '@/types';
 import { pitchesRepository } from '@/lib/repositories/pitches.repository';
+import { createServerClient } from '@supabase/ssr';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 // Middleware RBAC helper
 async function checkAdminAuth() {
-  const sessionToken = cookies().get('session_token')?.value;
-  if (!sessionToken) throw new Error('UNAUTHORIZED');
-  const decoded = await verifyJwt(sessionToken);
-  if (!decoded || decoded.role !== 'admin') throw new Error('FORBIDDEN');
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() { /* El middleware ya refresca las cookies */ }
+      }
+    }
+  );
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) throw new Error('UNAUTHORIZED');
+  // Verificación de rol en la tabla pública
+  const userRecord = await db.query.users.findFirst({
+    where: eq(users.id, user.id)
+  });
+  
+  if (!userRecord || userRecord.role !== 'admin') throw new Error('FORBIDDEN');
 }
 
 export async function updatePitch(pitchId: string, payload: unknown) {

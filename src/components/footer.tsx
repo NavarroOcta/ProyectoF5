@@ -1,14 +1,16 @@
+import Link from 'next/link';
+
 export default function Footer() {
   return (
     <footer className="w-full py-10 px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-4 bg-surface-container-lowest border-t border-white/5 full-width">
       <div className="flex flex-col items-center md:items-start gap-2">
-        <div className="font-headline-md text-headline-md text-primary italic tracking-tighter">PROYECTO F5</div>
-        <p className="font-label-caps text-label-caps text-on-surface-variant">© 2024 PROYECTO F5. ALL RIGHTS RESERVED.</p>
+        <div className="font-headline-md text-headline-md text-primary italic tracking-tighter">{process.env.NEXT_PUBLIC_COMPLEX_NAME || 'PROYECTO F5'}</div>
+        <p className="font-label-caps text-label-caps text-on-surface-variant">© {new Date().getFullYear()} {process.env.NEXT_PUBLIC_COMPLEX_NAME || 'PROYECTO F5'}. ALL RIGHTS RESERVED.</p>
       </div>
       <div className="flex flex-wrap justify-center gap-6">
-        <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-opacity opacity-80 hover:opacity-100" href="#">Terms of Service</a>
-        <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-opacity opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
-        <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-opacity opacity-80 hover:opacity-100" href="#">Contact Support</a>
+        <Link className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-opacity opacity-80 hover:opacity-100" href="/terms">Términos del Servicio</Link>
+        <Link className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-opacity opacity-80 hover:opacity-100" href="/privacy">Política de Privacidad</Link>
+        <Link className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-opacity opacity-80 hover:opacity-100" href="/#contacto">Contacto</Link>
       </div>
       <div className="flex gap-4">
         <a className="text-on-surface-variant hover:text-primary transition-colors" href="#">

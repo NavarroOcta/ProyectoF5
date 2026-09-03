@@ -2,12 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import { CreateBookingDTOSchema, RegisterUserDTOSchema } from '../../types';
-import bcrypt from 'bcryptjs';
-import { verifyJwt } from '../auth/jwt';
 import { cookies } from 'next/headers';
 import { usersRepository } from '../repositories/users.repository';
 import { pitchesRepository } from '../repositories/pitches.repository';
 import { reservationsRepository } from '../repositories/reservations.repository';
+import { createServerClient } from '@supabase/ssr';
 
 /**
  * Server Action para registrar una reserva de cancha.
@@ -109,10 +108,8 @@ export async function createBooking(payload: unknown) {
 
 /**
  * Server Action para registrar un usuario común en la plataforma.
- * Valida el payload de entrada, hashea la contraseña e inserta el registro en la base de datos.
- *
- * @param payload Datos del usuario a registrar
- * @returns DTO de respuesta con estado success y el usuario creado (sin contraseña) o el error controlado
+ * (Nota: Supabase maneja el auth, esto puede ser obsoleto si el auth se maneja 100% en cliente,
+ * pero se mantiene la lógica si es llamada por algún hook de Supabase o API de cliente).
  */
 export async function registerUser(payload: unknown) {
   // 1. Validar los datos de entrada con Zod
@@ -126,7 +123,7 @@ export async function registerUser(payload: unknown) {
     };
   }
 
-  const { email, password, name, phone } = validationResult.data;
+  const { email, name, phone } = validationResult.data;
 
   try {
     // 2. Comprobar si el correo ya existe
@@ -139,29 +136,20 @@ export async function registerUser(payload: unknown) {
       };
     }
 
-    // 3. Derivar contraseña con hashing bcrypt
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    
-    // Generar identificador único simulado para el usuario común
     const userId = `user_${Math.random().toString(36).substring(2, 11)}`;
 
     // 4. Registrar en base de datos (rol 'user' por defecto)
     const [newUser] = await usersRepository.createUser({
       id: userId,
       email,
-      password: hashedPassword,
       name,
       phone,
       role: 'user',
     });
 
-    // 5. Excluir contraseña del DTO de retorno
-    const { password: _, ...userWithoutPassword } = newUser;
-
     return {
       success: true as const,
-      data: userWithoutPassword,
+      data: newUser,
     };
   } catch (error: any) {
     return {
@@ -244,14 +232,26 @@ export async function getAvailableTimeSlots(pitchId: string, dateStr: string) {
 
 /**
  * Server Action para realizar una reserva.
- * Extrae y valida el usuario desde el JWT de sesión en lugar de confiar en el DTO del cliente.
+ * Extrae y valida el usuario desde Supabase en lugar de confiar en el DTO del cliente.
  *
  * @param payload Datos de la reserva (pitchId, startTime, endTime, paymentMethod)
  */
 export async function createReservation(payload: unknown) {
-  // 1. Obtener el token de sesión desde las cookies securizadas
-  const sessionToken = cookies().get('session_token')?.value;
-  if (!sessionToken) {
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() {}
+      }
+    }
+  );
+  
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user || !user.id) {
     return {
       success: false as const,
       error: 'UNAUTHORIZED' as const,
@@ -259,17 +259,7 @@ export async function createReservation(payload: unknown) {
     };
   }
 
-  // 2. Verificar criptográficamente el JWT y extraer el ID de usuario
-  const decoded = await verifyJwt(sessionToken);
-  if (!decoded || !decoded.id) {
-    return {
-      success: false as const,
-      error: 'UNAUTHORIZED' as const,
-      message: 'Sesión inválida o expirada.',
-    };
-  }
-
-  const userId = decoded.id;
+  const userId = user.id;
 
   // 3. Validar estructuralmente la reserva
   const validationResult = CreateBookingDTOSchema.safeParse(payload);

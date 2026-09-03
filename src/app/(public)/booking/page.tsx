@@ -10,7 +10,8 @@ export const metadata = {
   description: 'Reserva tu cancha de fútbol 5, 7 o 11 rápido y sin intermediarios.',
 };
 
-export const revalidate = 0;
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 interface BookingPageProps {
   searchParams: {

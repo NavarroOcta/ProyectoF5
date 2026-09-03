@@ -5,28 +5,39 @@ import LogoutButton from './auth/logout-button';
 import NavbarLinks from './navbar-links';
 import ThemeToggle from './theme-toggle';
 
+import { createServerClient } from '@supabase/ssr';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+
 const MobileNav = dynamic(() => import('./mobile-nav'), { ssr: false });
 
-function getSession() {
-  const token = cookies().get('session_token')?.value;
-  if (!token) return null;
-  
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    // Decodificar Base64Url
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
-    return payload as { id: string; email: string; name: string; role: 'user' | 'admin'; exp: number };
-  } catch (error) {
-    return null; // Resiliencia: si la cookie está corrupta, ignorar
-  }
-}
-
 export default async function Navbar() {
-  const session = getSession();
-  const sessionName = session ? (session.role === 'admin' ? 'Administrador' : (session.name || 'Usuario')) : undefined;
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() { /* middleware handles it */ }
+      }
+    }
+  );
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  let sessionName = undefined;
+  let sessionRole: 'user' | 'admin' | undefined = undefined;
+  
+  if (user) {
+    const userRecord = await db.query.users.findFirst({
+      where: eq(users.id, user.id)
+    });
+    if (userRecord) {
+      sessionRole = userRecord.role;
+      sessionName = userRecord.role === 'admin' ? 'Administrador' : (userRecord.name || 'Usuario');
+    }
+  }
 
   return (
     <nav className="fixed top-0 w-full flex justify-between items-center px-4 md:px-8 py-4 bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-md docked full-width z-50">
@@ -35,13 +46,13 @@ export default async function Navbar() {
       </Link>
       
       {/* Desktop Nav */}
-      <NavbarLinks role={session?.role} />
+      <NavbarLinks role={sessionRole} />
 
       <div className="hidden md:flex items-center gap-4">
         <ThemeToggle />
-        {session ? (
+        {user ? (
           <>
-            {session.role === 'user' && (
+            {sessionRole === 'user' && (
               <Link href="/dashboard/reservations" prefetch={false} className="font-label-caps text-label-caps text-on-surface hover:text-primary transition-colors px-4 py-2">
                 Mis Reservas
               </Link>
@@ -64,7 +75,7 @@ export default async function Navbar() {
       </div>
 
       {/* Mobile Nav Menu */}
-      <MobileNav role={session?.role} sessionName={sessionName} />
+      <MobileNav role={sessionRole} sessionName={sessionName} />
     </nav>
   );
 }

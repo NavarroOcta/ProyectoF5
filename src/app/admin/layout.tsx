@@ -4,33 +4,11 @@ import Link from 'next/link';
 import AdminSidebar from '@/components/admin/admin-sidebar';
 import ThemeToggle from '@/components/theme-toggle';
 
-function getAdminSession() {
-  const token = cookies().get('session_token')?.value;
-  if (!token) return null;
-  
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
-    return payload as { id: string; email: string; role: 'user' | 'admin'; exp: number };
-  } catch (error) {
-    return null;
-  }
-}
-
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = getAdminSession();
-
-  // Capa de Autorización a nivel de Componente
-  if (!session || session.role !== 'admin') {
-    redirect('/');
-  }
 
   return (
     <div className="min-h-screen bg-background flex">

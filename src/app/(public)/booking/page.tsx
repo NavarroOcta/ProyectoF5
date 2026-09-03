@@ -18,23 +18,24 @@ interface BookingPageProps {
   };
 }
 
-function getSession() {
-  const token = cookies().get('session_token')?.value;
-  if (!token) return null;
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
-  } catch (error) {
-    return null;
-  }
-}
+import { createServerClient } from '@supabase/ssr';
 
 export default async function BookingPage({ searchParams }: BookingPageProps) {
-  const session = getSession();
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() {}
+      }
+    }
+  );
 
-  if (!session) {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center pt-24 pb-12 px-4 md:px-8 bg-background relative">
         <div className="absolute inset-0 z-0">

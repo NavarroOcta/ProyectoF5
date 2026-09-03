@@ -20,14 +20,14 @@ export default async function Navbar() {
     {
       cookies: {
         getAll() { return cookieStore.getAll(); },
-        setAll() { /* middleware handles it */ }
+        setAll() { /* El middleware ya refresca las cookies */ }
       }
     }
   );
   const { data: { user } } = await supabase.auth.getUser();
   
   let sessionName = undefined;
-  let sessionRole: 'user' | 'admin' | undefined = undefined;
+  let sessionRole = undefined;
   
   if (user) {
     const userRecord = await db.query.users.findFirst({
@@ -46,7 +46,7 @@ export default async function Navbar() {
       </Link>
       
       {/* Desktop Nav */}
-      <NavbarLinks role={sessionRole} />
+      <NavbarLinks role={sessionRole as any} />
 
       <div className="hidden md:flex items-center gap-4">
         <ThemeToggle />
@@ -75,7 +75,7 @@ export default async function Navbar() {
       </div>
 
       {/* Mobile Nav Menu */}
-      <MobileNav role={sessionRole} sessionName={sessionName} />
+      <MobileNav role={sessionRole as any} sessionName={sessionName} />
     </nav>
   );
 }

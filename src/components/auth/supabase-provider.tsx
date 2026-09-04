@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -11,8 +11,14 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
     const supabase = createClient();
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      router.refresh();
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // 1. Yield al Event Loop (Espera a que Supabase guarde la cookie)
+      setTimeout(() => {
+        // 2. Encola la re-renderización del DOM evitando congelamiento
+        startTransition(() => {
+          router.refresh();
+        });
+      }, 0);
     });
 
     return () => {

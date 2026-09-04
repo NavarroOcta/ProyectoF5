@@ -17,7 +17,6 @@ export default function LogoutButton() {
     // 2. Transición de UI (Síncrona)
     startTransition(() => { 
       router.push('/');
-      router.refresh();
     });
   };
 

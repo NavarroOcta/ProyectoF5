@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Bebas_Neue, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
+import SupabaseProvider from '@/components/auth/supabase-provider';
 
 const bebasNeue = Bebas_Neue({
   weight: '400',
@@ -40,7 +41,9 @@ export default function RootLayout({
       </head>
       <body className={`${bebasNeue.variable} ${hankenGrotesk.variable} ${jetbrainsMono.variable} bg-background text-on-background font-body-md text-body-md antialiased overflow-x-hidden selection:bg-primary selection:text-black flex flex-col min-h-screen`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          {children}
+          <SupabaseProvider>
+            {children}
+          </SupabaseProvider>
         </ThemeProvider>
       </body>
     </html>

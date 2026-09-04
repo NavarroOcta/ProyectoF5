@@ -33,8 +33,7 @@ export default function LoginForm() {
         setServerError(error.message || 'Error al iniciar sesión.');
       } else {
         const returnTo = searchParams.get('returnTo');
-        router.refresh(); // Sincroniza estado de cookies con el servidor
-        router.push(returnTo || '/admin'); // Prioriza retornar a la reserva, sino fallback
+        router.push(returnTo || '/admin');
       }
     } catch (error) {
       setServerError('Ocurrió un error inesperado de red.');

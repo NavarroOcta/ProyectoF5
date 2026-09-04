@@ -8,12 +8,16 @@ export default function LogoutButton() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  const handleLogout = () => {
-    startTransition(async () => {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      router.refresh();
+  const handleLogout = async () => {
+    const supabase = createClient();
+    
+    // 1. Mutación de red (Asíncrona)
+    await supabase.auth.signOut(); 
+    
+    // 2. Transición de UI (Síncrona)
+    startTransition(() => { 
       router.push('/');
+      router.refresh();
     });
   };
 

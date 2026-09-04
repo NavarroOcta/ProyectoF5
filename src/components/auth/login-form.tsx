@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LoginDTO, LoginDTOSchema } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -31,8 +32,9 @@ export default function LoginForm() {
       if (error) {
         setServerError(error.message || 'Error al iniciar sesión.');
       } else {
-        router.refresh();
-        router.push('/admin');
+        const returnTo = searchParams.get('returnTo');
+        router.refresh(); // Sincroniza estado de cookies con el servidor
+        router.push(returnTo || '/admin'); // Prioriza retornar a la reserva, sino fallback
       }
     } catch (error) {
       setServerError('Ocurrió un error inesperado de red.');
